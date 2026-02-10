@@ -327,6 +327,43 @@ describe('parseTmx', () => {
     expect(map.staggerindex).toBe('odd');
   });
 
+  it('calculates columns from image dimensions when attribute is missing', () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.0" orientation="isometric" renderorder="right-down"
+     width="2" height="2" tilewidth="256" tileheight="128" infinite="0"
+     nextlayerid="2" nextobjectid="1">
+  <tileset firstgid="1" name="base" tilewidth="256" tileheight="256" tilecount="92">
+    <image source="256_base.png" width="1024" height="6000"/>
+  </tileset>
+</map>`;
+
+    const map = parseTmx(xml);
+    const ts = map.tilesets[0]!;
+    expect('columns' in ts).toBe(true);
+    if ('columns' in ts) {
+      expect(ts.columns).toBe(4); // 1024 / 256
+    }
+  });
+
+  it('calculates columns accounting for margin and spacing', () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.0" orientation="orthogonal" width="1" height="1"
+     tilewidth="32" tileheight="32" infinite="0"
+     nextlayerid="2" nextobjectid="1">
+  <tileset firstgid="1" name="spaced" tilewidth="32" tileheight="32"
+           tilecount="4" margin="2" spacing="1">
+    <image source="tiles.png" width="69" height="69"/>
+  </tileset>
+</map>`;
+
+    const map = parseTmx(xml);
+    const ts = map.tilesets[0]!;
+    if ('columns' in ts) {
+      // (69 - 2*2 + 1) / (32 + 1) = 66 / 33 = 2
+      expect(ts.columns).toBe(2);
+    }
+  });
+
   it('throws on invalid XML', () => {
     expect(() => parseTmx('<not-a-map/>')).toThrow('Expected root <map>');
   });

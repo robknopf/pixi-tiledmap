@@ -276,25 +276,36 @@ function parseTileset(el: Element): TiledTileset | TiledTilesetRef {
   const img = parseImage(el)
   const tiles = parseTileDefinitions(el)
 
+  const tilewidth = int(el, 'tilewidth')
+  const spacing = int(el, 'spacing')
+  const margin = int(el, 'margin')
+  const rawColumns = int(el, 'columns')
+  const columns =
+    rawColumns > 0
+      ? rawColumns
+      : img.imagewidth && tilewidth > 0
+        ? Math.floor((img.imagewidth - 2 * margin + spacing) / (tilewidth + spacing))
+        : 0
+
   return {
     backgroundcolor: optStr(el, 'backgroundcolor'),
     class: optStr(el, 'class'),
-    columns: int(el, 'columns'),
+    columns,
     fillmode: optStr(el, 'fillmode') as TiledFillMode | undefined,
     firstgid: int(el, 'firstgid'),
     grid: parseGrid(el),
-    margin: int(el, 'margin'),
+    margin,
     name: str(el, 'name'),
     objectalignment: optStr(el, 'objectalignment') as TiledObjectAlignment | undefined,
     properties: parseProperties(el),
-    spacing: int(el, 'spacing'),
+    spacing,
     terrains: parseTerrains(el),
     tilecount: int(el, 'tilecount'),
     tileheight: int(el, 'tileheight'),
     tileoffset: parseTileOffset(el),
     tilerendersize: optStr(el, 'tilerendersize') as TiledTileRenderSize | undefined,
     tiles: tiles,
-    tilewidth: int(el, 'tilewidth'),
+    tilewidth,
     transformations: parseTransformations(el),
     wangsets: parseWangSets(el),
     ...img
