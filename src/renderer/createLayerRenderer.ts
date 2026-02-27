@@ -23,7 +23,7 @@ export function createLayerRenderer(
     }
 
     case 'objectgroup':
-      return new ObjectLayerRenderer(layer, tilesets)
+      return new ObjectLayerRenderer(layer, tilesets, ctx)
 
     case 'group':
       return new GroupLayerRenderer(layer, tilesets, ctx, imageTextures)

@@ -1,16 +1,19 @@
 import { Container, Graphics, Sprite, Text } from 'pixi.js'
 import type { ResolvedObjectLayer, TiledObject, TiledText, TiledPoint } from '../types'
 import type { TileSetRenderer } from './TileSetRenderer.js'
+import type { MapContext } from './tilePlacement.js'
 import { decodeGid } from '../parser'
 import { parseTintColor } from './parseColor.js'
 
 export class ObjectLayerRenderer extends Container {
   readonly layerData: ResolvedObjectLayer
+  private readonly _ctx: MapContext
 
-  constructor(layerData: ResolvedObjectLayer, tilesets: TileSetRenderer[]) {
+  constructor(layerData: ResolvedObjectLayer, tilesets: TileSetRenderer[], ctx: MapContext) {
     super()
 
     this.layerData = layerData
+    this._ctx = ctx
     this.label = layerData.name
     this.alpha = layerData.opacity
     this.visible = layerData.visible
@@ -84,7 +87,9 @@ export class ObjectLayerRenderer extends Container {
         if (!texture) return null
 
         const sprite = new Sprite(texture)
-        sprite.position.set(obj.x, obj.y - obj.height)
+        const pos = this._project(obj.x, obj.y)
+        const halfW = this._ctx.tilewidth * 0.5
+        sprite.position.set(pos.x - halfW, pos.y - obj.height)
         sprite.width = obj.width
         sprite.height = obj.height
         sprite.angle = obj.rotation
@@ -120,25 +125,28 @@ export class ObjectLayerRenderer extends Container {
         align: td.halign ?? 'left'
       }
     })
-    text.position.set(obj.x, obj.y)
+    const pos = this._project(obj.x, obj.y)
+    text.position.set(pos.x, pos.y)
     text.angle = obj.rotation
     text.visible = obj.visible
     return text
   }
 
   private _createRectangle(obj: TiledObject): Container {
-    const g = new Graphics().rect(0, 0, obj.width, obj.height).stroke({ color: 0xffffff, width: 1 })
-    g.position.set(obj.x, obj.y)
+    const g = new Graphics()
+    this._drawProjectedRect(g, obj.width, obj.height)
+    const pos = this._project(obj.x, obj.y)
+    g.position.set(pos.x, pos.y)
     g.angle = obj.rotation
     g.visible = obj.visible
     return g
   }
 
   private _createEllipse(obj: TiledObject): Container {
-    const rx = obj.width / 2
-    const ry = obj.height / 2
-    const g = new Graphics().ellipse(rx, ry, rx, ry).stroke({ color: 0xffffff, width: 1 })
-    g.position.set(obj.x, obj.y)
+    const g = new Graphics()
+    this._drawProjectedEllipse(g, obj.width, obj.height)
+    const pos = this._project(obj.x, obj.y)
+    g.position.set(pos.x, pos.y)
     g.angle = obj.rotation
     g.visible = obj.visible
     return g
@@ -146,7 +154,8 @@ export class ObjectLayerRenderer extends Container {
 
   private _createPoint(obj: TiledObject): Container {
     const g = new Graphics().circle(0, 0, 3).fill(0xffffff)
-    g.position.set(obj.x, obj.y)
+    const pos = this._project(obj.x, obj.y)
+    g.position.set(pos.x, pos.y)
     g.visible = obj.visible
     return g
   }
@@ -156,10 +165,12 @@ export class ObjectLayerRenderer extends Container {
 
     if (points.length > 0) {
       const first = points[0]!
-      g.moveTo(first.x, first.y)
+      const firstProjected = this._project(first.x, first.y)
+      g.moveTo(firstProjected.x, firstProjected.y)
       for (let i = 1; i < points.length; i++) {
         const pt = points[i]!
-        g.lineTo(pt.x, pt.y)
+        const projected = this._project(pt.x, pt.y)
+        g.lineTo(projected.x, projected.y)
       }
       if (closed) {
         g.closePath()
@@ -167,9 +178,59 @@ export class ObjectLayerRenderer extends Container {
       g.stroke({ color: 0xffffff, width: 1 })
     }
 
-    g.position.set(obj.x, obj.y)
+    const pos = this._project(obj.x, obj.y)
+    g.position.set(pos.x, pos.y)
     g.angle = obj.rotation
     g.visible = obj.visible
     return g
+  }
+
+  private _project(x: number, y: number): { x: number; y: number } {
+    if (this._ctx.orientation !== 'isometric') {
+      return { x, y }
+    }
+
+    const halfW = this._ctx.tilewidth * 0.5
+    const halfH = this._ctx.tileheight * 0.5
+    return {
+      x: x - y,
+      y: (x + y) * (halfH / halfW)
+    }
+  }
+
+  private _drawProjectedRect(graphics: Graphics, width: number, height: number): void {
+    const p0 = this._project(0, 0)
+    const p1 = this._project(width, 0)
+    const p2 = this._project(width, height)
+    const p3 = this._project(0, height)
+    graphics
+      .moveTo(p0.x, p0.y)
+      .lineTo(p1.x, p1.y)
+      .lineTo(p2.x, p2.y)
+      .lineTo(p3.x, p3.y)
+      .closePath()
+      .stroke({ color: 0xffffff, width: 1 })
+  }
+
+  private _drawProjectedEllipse(graphics: Graphics, width: number, height: number): void {
+    const cx = width * 0.5
+    const cy = height * 0.5
+    const rx = width * 0.5
+    const ry = height * 0.5
+    const segments = 24
+
+    for (let i = 0; i <= segments; i++) {
+      const t = (i / segments) * Math.PI * 2
+      const px = cx + Math.cos(t) * rx
+      const py = cy + Math.sin(t) * ry
+      const projected = this._project(px, py)
+      if (i === 0) {
+        graphics.moveTo(projected.x, projected.y)
+      } else {
+        graphics.lineTo(projected.x, projected.y)
+      }
+    }
+
+    graphics.closePath().stroke({ color: 0xffffff, width: 1 })
   }
 }
