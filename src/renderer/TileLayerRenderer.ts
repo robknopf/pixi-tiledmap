@@ -73,15 +73,17 @@ export class TileLayerRenderer extends Container {
       const animFrames = tsRenderer.getAnimationFrames(tile.localId)
 
       if (animFrames && animFrames.length > 1) {
-        const sprite = this._createAnimatedTile(tsRenderer, animFrames, tile, pos.x, pos.y)
+        const sprite = this._createAnimatedTile(tsRenderer, animFrames, tile, pos.x, pos.y, ctx)
         if (sprite) this.addChild(sprite)
       } else {
         const texture = tsRenderer.getTexture(tile.localId)
         if (!texture) continue
 
         const sprite = new Sprite(texture)
+        const baseAnchor = getBaseAnchor(texture, ctx)
+        sprite.anchor.set(baseAnchor.x, baseAnchor.y)
         sprite.position.set(pos.x, pos.y)
-        applyFlip(sprite, tile, ctx.tilewidth)
+        applyFlip(sprite, tile, ctx.tilewidth, baseAnchor)
         this.addChild(sprite)
       }
     }
@@ -92,7 +94,8 @@ export class TileLayerRenderer extends Container {
     frames: TiledFrame[],
     tile: ResolvedTile,
     x: number,
-    y: number
+    y: number,
+    ctx: MapContext
   ): AnimatedSprite | null {
     const textures: { texture: Texture; time: number }[] = []
 
@@ -103,9 +106,11 @@ export class TileLayerRenderer extends Container {
     }
 
     const sprite = new AnimatedSprite(textures)
+    const baseAnchor = getBaseAnchor(textures[0]!.texture, ctx)
+    sprite.anchor.set(baseAnchor.x, baseAnchor.y)
     sprite.position.set(x, y)
     sprite.play()
-    applyFlip(sprite, tile, tsRenderer.tileset.tilewidth)
+    applyFlip(sprite, tile, tsRenderer.tileset.tilewidth, baseAnchor)
     return sprite
   }
 }
@@ -133,7 +138,12 @@ function* iterateTiles(
   }
 }
 
-function applyFlip(sprite: Sprite, tile: ResolvedTile, tileWidth: number): void {
+function applyFlip(
+  sprite: Sprite,
+  tile: ResolvedTile,
+  tileWidth: number,
+  baseAnchor: { x: number; y: number }
+): void {
   if (tile.diagonalFlip) {
     sprite.rotation = Math.PI / 2
     sprite.scale.x = tile.horizontalFlip ? -1 : 1
@@ -143,11 +153,27 @@ function applyFlip(sprite: Sprite, tile: ResolvedTile, tileWidth: number): void 
   } else {
     if (tile.horizontalFlip) {
       sprite.scale.x = -1
-      sprite.anchor.x = 1
+      sprite.anchor.x = 1 - baseAnchor.x
     }
     if (tile.verticalFlip) {
       sprite.scale.y = -1
-      sprite.anchor.y = 1
+      sprite.anchor.y = 1 - baseAnchor.y
     }
   }
+}
+
+function getBaseAnchor(texture: Texture, ctx: MapContext): { x: number; y: number } {
+  if (ctx.orientation !== 'isometric') {
+    return { x: 0, y: 0 }
+  }
+
+  const width = Math.max(texture.width, 1)
+  const height = Math.max(texture.height, 1)
+  const x = clamp((ctx.tilewidth / 2) / width, 0, 1)
+  const y = clamp(1 - ctx.tileheight / height, 0, 1)
+  return { x, y }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
 }
