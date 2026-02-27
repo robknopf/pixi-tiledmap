@@ -167,6 +167,8 @@ function resolveLayer(layer: TiledLayer, tilesets: ResolvedTileset[]): ResolvedL
       return {
         type: 'imagelayer',
         ...layerDefaults(layer),
+        x: layer.x ?? 0,
+        y: layer.y ?? 0,
         image: layer.image ?? '',
         imagewidth: layer.imagewidth,
         imageheight: layer.imageheight,
@@ -240,6 +242,8 @@ async function resolveLayerAsync(
       return {
         type: 'imagelayer',
         ...layerDefaults(layer),
+        x: layer.x ?? 0,
+        y: layer.y ?? 0,
         image: layer.image ?? '',
         imagewidth: layer.imagewidth,
         imageheight: layer.imageheight,

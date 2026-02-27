@@ -40,6 +40,8 @@ export class TiledMap extends Container {
     const ctx: MapContext = {
       orientation: mapData.orientation,
       renderorder: mapData.renderorder,
+      mapwidth: mapData.width,
+      mapheight: mapData.height,
       tilewidth: mapData.tilewidth,
       tileheight: mapData.tileheight,
       hexsidelength: mapData.hexsidelength,

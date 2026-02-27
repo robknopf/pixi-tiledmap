@@ -372,6 +372,8 @@ export interface ResolvedImageLayer {
   type: 'imagelayer'
   id: number
   name: string
+  x: number
+  y: number
   opacity: number
   visible: boolean
   offsetx: number
@@ -494,6 +496,8 @@ export interface TiledMapAsset {
 export interface MapContext {
   orientation: TiledOrientation
   renderorder: TiledRenderOrder
+  mapwidth: number
+  mapheight: number
   tilewidth: number
   tileheight: number
   hexsidelength?: number
